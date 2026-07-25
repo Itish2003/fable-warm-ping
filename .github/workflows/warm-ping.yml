@@ -1,0 +1,37 @@
+name: warm-ping
+
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Ping fable agent card
+        run: |
+          out=$(curl -s -o /dev/null -w "%{http_code} %{time_total}s" -m 30 \
+            https://fable20.vercel.app/.well-known/agent-card.json)
+          echo "fable card -> $out"
+          # Non-200 fails the job, so GitHub's failure email doubles
+          # as a free uptime alert.
+          [ "${out%% *}" = "200" ]
+
+      - name: Keepalive commit
+        run: |
+          # GitHub disables scheduled workflows after 60 days without
+          # repo activity; an empty commit at day 45 resets the timer.
+          last=$(git log -1 --format=%ct)
+          age_days=$(( ( $(date +%s) - last ) / 86400 ))
+          if [ "$age_days" -ge 45 ]; then
+            git config user.name "warm-ping bot"
+            git config user.email "actions@users.noreply.github.com"
+            git commit --allow-empty -m "keepalive: reset scheduler idle timer"
+            git push
+          fi
