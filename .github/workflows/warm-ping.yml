@@ -2,7 +2,11 @@ name: warm-ping
 
 on:
   schedule:
+    # Two offset tracks -> effective 2-3 min cadence. Fluid reaps the
+    # idle instance in ~3 min (measured 2026-07-25), so plain */5 leaves
+    # cold windows even before GitHub's cron jitter.
     - cron: "*/5 * * * *"
+    - cron: "2-57/5 * * * *"
   workflow_dispatch:
 
 permissions:
